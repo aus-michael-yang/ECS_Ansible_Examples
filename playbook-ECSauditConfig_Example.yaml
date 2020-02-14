@@ -4,12 +4,11 @@
   gather_facts: yes
   vars:
     DateTimeStamp: "{{ansible_date_time.date}}.{{ansible_date_time.time}}"
-    username: <ENTER YOUR ECS USERNAME>
-    password: <ENTER YOUR ECS PASSWORD>
-    ECS_host: portal.ecstestdrive.com
+    username: <ECS MGMT USER>
+    password: <ECS MGMT PASS>
+    ECS_host: <YOUR ECS URL:PORT>
     LogDir: ~/ECSauditlog/THEaudit/
     ECSPrevState: "{{LogDir}}playbook-ECSauditConfig_Example.prev"
-    ECSCurrState: "{{LogDir}}playbook-ECSauditConfig_Example.curr"
 
   tasks:
 
@@ -27,7 +26,7 @@
       register: results_login
       no_log: True
 
-    ### Conenct to ECS with auth token and get updated VDC node list
+    ### Conenct to ECS with auth token and get updated VDC node list    
     - name: Connect to ECS and get CCA details
       uri:
         validate_certs: no
@@ -40,23 +39,22 @@
         return_content: no
       with_items:
         - https://{{ECS_host}}/vdc/nodes
-        - https://{{ECS_host}}/feature/ServerSideEncryption
         - https://{{ECS_host}}/object/bucket
       register: results_CCA
-
+    
     - name: Save ECS API query item and json output to new fact
       set_fact:
         results_all_json: "{{ results_CCA | json_query('results[*].[item,json]') }}" ## loop capable ##
 
     - name: Check or create log directory
-      file:
+      file: 
         state: directory
         path: "{{ LogDir }}"
         recurse: true
       changed_when: false
 
     - name: Check previous config state
-      file:
+      file: 
         state: touch
         path: "{{ ECSPrevState }}"
       changed_when: lookup('file', ECSPrevState ) != results_all_json | to_nice_json
@@ -85,3 +83,4 @@
       copy:
         content: "{{ results_all_json | to_nice_json }}"
         dest: "{{LogDir}}{{ DateTimeStamp }}.ECS_change.log"
+
